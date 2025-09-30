@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Fully Automatic References</title>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; }
+a { color: blue; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.highlight { background-color: yellow; transition: background-color 0.5s; }
+#references a { margin-right: 5px; }
+</style>
+</head>
+<body>
+
+<h1>Main Text</h1>
+<p>
+  Mental illness affects families deeply according to Anthony, E.J.  
+  Studies by Doe, A. also confirm this.  
+  Additional research by Lee, C. supports these findings.  
+  Further work by Anthony, E.J. highlights family stress impacts.
+</p>
+
+<h2>References</h2>
+<ol id="references">
+  <li><p class="ref">Anthony, E.J. (1970). The impact of mental and physical illness on family life. American Journal of Psychiatry, 127, 138–146.</p></li>
+  <li><p class="ref">Doe, A. (2019). Study on family mental health. Journal of Psychology, 35, 45–55.</p></li>
+  <li><p class="ref">Lee, C. (2018). Family support systems and mental illness. International Journal of Psychology, 60, 33–40.</p></li>
+</ol>
+
+<script>
+// Build reference map: author name -> ID
+const references = document.querySelectorAll('#references li .ref');
+const referenceMap = {};
+references.forEach((ref, index) => {
+    const authorMatch = ref.textContent.match(/^([^()]+?)\s*\(/); // get text before '('
+    if(authorMatch) {
+        const author = authorMatch[1].trim();
+        const idSafe = 'ref_' + index;
+        ref.id = idSafe;
+        referenceMap[author] = {id: idSafe, text: author};
+    }
+});
+
+// Track citation counts
+const citationCounts = {};
+
+// Escape regex special characters
+function escapeRegex(text) {
+    return text.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&');
+}
+
+// Automatically link author names in main text
+document.querySelectorAll('p').forEach(p => {
+    Object.keys(referenceMap).forEach(key => {
+        const {id, text} = referenceMap[key];
+        const regex = new RegExp(escapeRegex(text), 'g');
+        p.innerHTML = p.innerHTML.replace(regex, match => {
+            citationCounts[key] = (citationCounts[key] || 0) + 1;
+            const anchorId = `${id}_cite_${citationCounts[key]}`;
+            return `<a id="${anchorId}" href="#${id}" onclick="highlightAnchor('${anchorId}')">${match}</a>`;
+        });
+    });
+});
+
+// Add backlinks in reference section
+Object.keys(referenceMap).forEach(key => {
+    const refId = referenceMap[key].id;
+    const ref = document.getElementById(refId);
+    const count = citationCounts[key] || 0;
+    if(count > 0){
+        let linksHtml = '';
+        for(let i=1;i<=count;i++){
+            linksHtml += `<a href="#${refId}_cite_${i}" onclick="highlightAnchor('${refId}_cite_${i}')">[cite ${i}]</a> `;
+        }
+        ref.innerHTML += ' ' + linksHtml;
+    }
+});
+
+// Highlight function
+function highlightAnchor(id){
+    document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+    const anchor = document.getElementById(id);
+    if(anchor){
+        anchor.classList.add('highlight');
+        anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(()=>anchor.classList.remove('highlight'),2000);
+    }
+}
+</script>
+
+</body>
+</html>

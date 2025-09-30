@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Theme Customizer</title>
+  <style>
+    body.dark { background: #222; color: white; }
+    body.light { background: #fff; color: black; }
+  </style>
+</head>
+<body>
+  <h2>Theme Customizer</h2>
+  <button id="toggleTheme">Toggle Theme</button>
+  <button id="previewFont">Preview Font Size</button>
+
+  <script>
+    const body = document.querySelector("body");
+    const toggleTheme = document.getElementById("toggleTheme");
+    const previewFont = document.getElementById("previewFont");
+
+    // Load saved theme
+    let savedTheme = localStorage.getItem("theme") || "light";
+    body.className = savedTheme;
+
+    toggleTheme.onclick = () => {
+      body.classList.toggle("dark");
+      body.classList.toggle("light");
+      localStorage.setItem("theme", body.className);
+    };
+
+    previewFont.onclick = () => {
+      body.style.fontSize = "20px";
+      sessionStorage.setItem("previewFontSize", "20px");
+    };
+
+    if (sessionStorage.getItem("previewFontSize")) {
+      body.style.fontSize = sessionStorage.getItem("previewFontSize");
+    }
+  </script>
+</body>
+</html>

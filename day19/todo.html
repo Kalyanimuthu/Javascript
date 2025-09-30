@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>To-Do List</title>
+</head>
+<body>
+  <h2>To-Do List</h2>
+  <input type="text" id="taskInput" placeholder="Enter task">
+  <button id="addBtn">Add</button>
+  <select id="filter">
+    <option value="all">All</option>
+    <option value="completed">Completed</option>
+    <option value="pending">Pending</option>
+  </select>
+  <ul id="taskList"></ul>
+
+  <script>
+    const taskInput = document.getElementById("taskInput");
+    const addBtn = document.querySelector("#addBtn");
+    const taskList = document.querySelector("#taskList");
+    const filter = document.getElementById("filter");
+
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    function renderTasks() {
+      taskList.innerHTML = "";
+      let filterValue = sessionStorage.getItem("filter") || "all";
+
+      let filtered = tasks.filter(t => 
+        filterValue === "completed" ? t.completed : 
+        filterValue === "pending" ? !t.completed : true
+      );
+
+      filtered.forEach((t, i) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span style="text-decoration:${t.completed ? "line-through" : "none"}">${t.text}</span>
+          <button onclick="toggleTask(${i})">✔</button>
+          <button onclick="deleteTask(${i})">❌</button>`;
+        taskList.appendChild(li);
+      });
+    }
+
+    function addTask() {
+      if (!taskInput.value) return;
+      tasks.push({ text: taskInput.value, completed: false });
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+      taskInput.value = "";
+      renderTasks();
+    }
+
+    function toggleTask(i) {
+      tasks[i].completed = !tasks[i].completed;
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+      renderTasks();
+    }
+
+    function deleteTask(i) {
+      tasks.splice(i, 1);
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+      renderTasks();
+    }
+
+    filter.addEventListener("change", () => {
+      sessionStorage.setItem("filter", filter.value);
+      renderTasks();
+    });
+
+    addBtn.addEventListener("click", addTask);
+    renderTasks();
+  </script>
+</body>
+</html>

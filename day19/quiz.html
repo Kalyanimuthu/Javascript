@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head><title>Quiz App</title></head>
+<body>
+  <h2>Quiz</h2>
+  <div id="question"></div>
+  <div id="options"></div>
+  <button id="nextBtn">Next</button>
+  <button id="finishBtn">Finish</button>
+  <div id="leaderboard"></div>
+
+  <script>
+    const questions = [
+      { q: "2 + 2 = ?", options: ["3", "4", "5"], correct: "4" },
+      { q: "Capital of India?", options: ["Delhi", "Mumbai"], correct: "Delhi" }
+    ];
+
+    let current = 0;
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+
+    function renderQuestion() {
+      let q = questions[current];
+      questionEl.textContent = q.q;
+      optionsEl.innerHTML = "";
+      q.options.forEach(opt => {
+        let btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => sessionStorage.setItem(`answer${current}`, opt);
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    document.getElementById("nextBtn").onclick = () => {
+      if (current < questions.length - 1) {
+        current++;
+        renderQuestion();
+      }
+    };
+
+    document.getElementById("finishBtn").onclick = () => {
+      let score = 0;
+      questions.forEach((q, i) => {
+        if (sessionStorage.getItem(`answer${i}`) === q.correct) score++;
+      });
+      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+      leaderboard.push({ score, date: new Date().toLocaleString() });
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+
+      document.getElementById("leaderboard").innerHTML =
+        leaderboard.map(e => `Score: ${e.score} (${e.date})`).join("<br>");
+      sessionStorage.clear();
+    };
+
+    renderQuestion();
+  </script>
+</body>
+</html>
