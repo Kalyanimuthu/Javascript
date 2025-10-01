@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Restaurant Online Order Form</title>
+</head>
+<body>
+  <h2>Restaurant Online Order Form</h2>
+
+  <!-- Menu Section -->
+  <h3>Menu</h3>
+  <div id="menu"></div>
+
+  <!-- Cart Summary -->
+  <h3>Cart Summary</h3>
+  <ul id="cart"></ul>
+  <p><b>Total:</b> ₹<span id="total">0</span></p>
+
+  <!-- User Form -->
+  <form id="orderForm">
+    <h3>Customer Details</h3>
+    <label>Name: <input type="text" id="name"></label><br><br>
+    <label>Address: <input type="text" id="address"></label><br><br>
+
+    <p>Delivery Option:</p>
+    <label><input type="radio" name="delivery" value="Home Delivery"> Home Delivery</label><br>
+    <label><input type="radio" name="delivery" value="Pickup"> Pickup</label><br><br>
+
+    <label>Payment Mode:
+      <select id="payment">
+        <option value="">Select</option>
+        <option value="Card">Card</option>
+        <option value="UPI">UPI</option>
+        <option value="Cash">Cash</option>
+      </select>
+    </label>
+    <div id="extraFields"></div><br>
+
+    <button type="submit">Place Order</button>
+  </form>
+
+  <p id="errors" style="color:red;"></p>
+
+  <script>
+    // Menu Data
+    const menuItems = [
+      { name: "Pizza", price: 200 },
+      { name: "Burger", price: 100 },
+      { name: "Pasta", price: 150 },
+      { name: "Fries", price: 80 },
+      { name: "Coke", price: 50 }
+    ];
+
+    let cart = {}; // { itemName: quantity }
+
+    // Dynamically generate menu
+    const menuDiv = document.getElementById("menu");
+    menuItems.forEach(item => {
+      let div = document.createElement("div");
+      div.innerHTML = `
+        <label>
+          <input type="checkbox" class="menu-item" data-name="${item.name}" data-price="${item.price}">
+          ${item.name} (₹${item.price})
+        </label>
+        Qty: <input type="number" class="qty" data-name="${item.name}" value="1" min="1" style="width:50px;" disabled>
+      `;
+      menuDiv.appendChild(div);
+    });
+
+    // Update cart summary
+    function updateCart() {
+      let cartList = document.getElementById("cart");
+      cartList.innerHTML = "";
+      let total = 0;
+      for (let item in cart) {
+        let li = document.createElement("li");
+        let price = menuItems.find(m => m.name === item).price;
+        let subTotal = cart[item] * price;
+        total += subTotal;
+        li.textContent = `${item} x ${cart[item]} = ₹${subTotal}`;
+        cartList.appendChild(li);
+      }
+      document.getElementById("total").innerText = total;
+    }
+
+    // Event Delegation for menu clicks
+    menuDiv.addEventListener("click", (e) => {
+      if (e.target.classList.contains("menu-item")) {
+        let name = e.target.dataset.name;
+        let qtyInput = document.querySelector(`.qty[data-name="${name}"]`);
+        if (e.target.checked) {
+          cart[name] = 1;
+          qtyInput.disabled = false;
+        } else {
+          delete cart[name];
+          qtyInput.disabled = true;
+        }
+        updateCart();
+      }
+    });
+
+    // Quantity change (real-time total update)
+    menuDiv.addEventListener("input", (e) => {
+      if (e.target.classList.contains("qty")) {
+        let name = e.target.dataset.name;
+        let qty = parseInt(e.target.value) || 1;
+        if (cart[name] !== undefined) {
+          cart[name] = qty;
+        }
+        updateCart();
+      }
+    });
+
+    // Payment method change
+    document.getElementById("payment").addEventListener("change", (e) => {
+      let extra = document.getElementById("extraFields");
+      extra.innerHTML = "";
+      if (e.target.value === "Card") {
+        extra.innerHTML = 'Card Number: <input type="text" id="cardNumber"><br><br>';
+      } else if (e.target.value === "UPI") {
+        extra.innerHTML = 'UPI ID: <input type="text" id="upiId"><br><br>';
+      }
+    });
+
+    // Form submit
+    document.getElementById("orderForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      let name = document.getElementById("name").value;
+      let address = document.getElementById("address").value;
+      let delivery = document.querySelector("input[name='delivery']:checked")?.value;
+      let payment = document.getElementById("payment").value;
+
+      if (!name || !address || !delivery || !payment || Object.keys(cart).length === 0) {
+        document.getElementById("errors").innerText = "Please fill all fields and select at least one item.";
+        return;
+      }
+
+      let order = {
+        name, address, delivery, payment, cart,
+        total: document.getElementById("total").innerText
+      };
+
+      // Save in sessionStorage
+      sessionStorage.setItem("lastOrder", JSON.stringify(order));
+
+      alert("Order Placed Successfully!\n" + JSON.stringify(order, null, 2));
+    });
+
+    // Load last order if available
+    window.onload = () => {
+      let last = JSON.parse(sessionStorage.getItem("lastOrder"));
+      if (last) {
+        alert("Last Order Found:\n" + JSON.stringify(last, null, 2));
+      }
+    };
+  </script>
+</body>
+</html>

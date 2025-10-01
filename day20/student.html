@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Feedback & Rating System</title>
+</head>
+<body>
+  <h2>Student Feedback Form</h2>
+
+  <form id="feedbackForm">
+    <label>Name: <input type="text" id="name"></label><br><br>
+    <label>Email: <input type="text" id="email"></label><br><br>
+    <label>Course: 
+      <select id="course">
+        <option value="">Select Course</option>
+        <option>JavaScript</option>
+        <option>Python</option>
+        <option>Java</option>
+      </select>
+    </label><br><br>
+
+    <p>Rating:</p>
+    <span id="stars">
+      ★ ★ ★ ★ ★
+    </span>
+    <input type="hidden" id="rating"><br><br>
+
+    <label>Comments:</label><br>
+    <textarea id="comments" rows="4" cols="40"></textarea><br>
+    <small>Characters: <span id="charCount">0</span></small><br><br>
+
+    <button type="submit">Submit Feedback</button>
+  </form>
+
+  <p id="errors" style="color:red;"></p>
+
+  <h3>Submitted Feedback</h3>
+  <div id="feedbackList"></div>
+
+  <script>
+    const starsContainer = document.getElementById("stars");
+    const ratingInput = document.getElementById("rating");
+    let fixedRating = 0;
+
+    // Display stars dynamically
+    function renderStars(highlight = 0) {
+      starsContainer.innerHTML = "";
+      for (let i = 1; i <= 5; i++) {
+        let span = document.createElement("span");
+        span.textContent = "★";
+        span.style.cursor = "pointer";
+        span.dataset.value = i;
+        if (i <= (highlight || fixedRating)) {
+          span.style.color = "gold";
+        } else {
+          span.style.color = "gray";
+        }
+        starsContainer.appendChild(span);
+      }
+    }
+    renderStars();
+
+    // Mouseover → temporary highlight
+    starsContainer.addEventListener("mouseover", (e) => {
+      if (e.target.dataset.value) {
+        renderStars(Number(e.target.dataset.value));
+      }
+    });
+
+    // Mouseout → revert to fixed rating
+    starsContainer.addEventListener("mouseout", () => {
+      renderStars();
+    });
+
+    // Click → fix rating
+    starsContainer.addEventListener("click", (e) => {
+      if (e.target.dataset.value) {
+        fixedRating = Number(e.target.dataset.value);
+        ratingInput.value = fixedRating;
+        renderStars();
+      }
+    });
+
+    // Keyup → live character count
+    document.getElementById("comments").addEventListener("keyup", (e) => {
+      document.getElementById("charCount").innerText = e.target.value.length;
+    });
+
+    // Blur → validate email
+    document.getElementById("email").addEventListener("blur", (e) => {
+      if (e.target.value && !e.target.value.includes("@")) {
+        document.getElementById("errors").innerText = "Invalid email format!";
+      } else {
+        document.getElementById("errors").innerText = "";
+      }
+    });
+
+    // Submit feedback
+    document.getElementById("feedbackForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      let name = document.getElementById("name").value;
+      let email = document.getElementById("email").value;
+      let course = document.getElementById("course").value;
+      let rating = ratingInput.value;
+      let comments = document.getElementById("comments").value;
+
+      // Validation
+      if (!name || !email.includes("@") || !course || !rating || comments.length < 20) {
+        document.getElementById("errors").innerText = "Please fill all fields correctly!";
+        return;
+      }
+
+      let feedback = { name, email, course, rating, comments };
+
+      // Save to localStorage
+      let allFeedback = JSON.parse(localStorage.getItem("feedbacks")) || [];
+      allFeedback.push(feedback);
+      localStorage.setItem("feedbacks", JSON.stringify(allFeedback));
+
+      // Reset form
+      document.getElementById("feedbackForm").reset();
+      fixedRating = 0; ratingInput.value = "";
+      renderStars();
+      document.getElementById("charCount").innerText = "0";
+      document.getElementById("errors").innerText = "";
+
+      // Refresh list
+      loadFeedbacks();
+    });
+
+    // Load feedbacks
+    function loadFeedbacks() {
+      let list = document.getElementById("feedbackList");
+      list.innerHTML = "";
+      let allFeedback = JSON.parse(localStorage.getItem("feedbacks")) || [];
+      allFeedback.forEach((f, index) => {
+        let div = document.createElement("div");
+        div.style.border = "1px solid black";
+        div.style.margin = "5px";
+        div.style.padding = "5px";
+        div.innerHTML = `
+          <p><b>${f.name}</b> (${f.email}) - ${f.course}</p>
+          <p>Rating: ${"★".repeat(f.rating)}</p>
+          <p>${f.comments}</p>
+          <button data-index="${index}" class="deleteBtn">Delete</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // Delete feedback (event delegation)
+    document.getElementById("feedbackList").addEventListener("click", (e) => {
+      if (e.target.classList.contains("deleteBtn")) {
+        let idx = e.target.dataset.index;
+        let allFeedback = JSON.parse(localStorage.getItem("feedbacks")) || [];
+        allFeedback.splice(idx, 1);
+        localStorage.setItem("feedbacks", JSON.stringify(allFeedback));
+        loadFeedbacks();
+      }
+    });
+
+    // Load existing feedbacks on page load
+    window.onload = loadFeedbacks;
+  </script>
+</body>
+</html>

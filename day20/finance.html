@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Personal Finance Tracker</title>
+</head>
+<body>
+  <h2>Personal Finance Tracker</h2>
+  <p><b>Total Expenses: ₹<span id="total">0</span></b></p>
+
+  <!-- Expense Form -->
+  <form id="expenseForm">
+    <label>Amount: <input type="number" id="amount"></label><br><br>
+    <label>Category: 
+      <select id="category">
+        <option value="">Select</option>
+        <option>Food</option>
+        <option>Travel</option>
+        <option>Shopping</option>
+        <option>Other</option>
+      </select>
+    </label><br><br>
+    <label>Date: <input type="date" id="date"></label><br><br>
+    <label>Notes: <input type="text" id="notes"></label><br><br>
+    <button type="submit">Add Expense</button>
+  </form>
+
+  <p id="errors" style="color:red;"></p>
+
+  <!-- Filters -->
+  <h3>Filters</h3>
+  <label>Category: 
+    <select id="filterCategory">
+      <option value="">All</option>
+      <option>Food</option>
+      <option>Travel</option>
+      <option>Shopping</option>
+      <option>Other</option>
+    </select>
+  </label>
+  <label>Date: <input type="date" id="filterDate"></label>
+
+  <!-- Expense List -->
+  <h3>Expense List</h3>
+  <ul id="expenseList"></ul>
+
+  <script>
+    const form = document.getElementById("expenseForm");
+    const totalSpan = document.getElementById("total");
+    const list = document.getElementById("expenseList");
+
+    // --- Helpers ---
+    function getExpenses() {
+      return JSON.parse(localStorage.getItem("expenses")) || [];
+    }
+    function saveExpenses(expenses) {
+      localStorage.setItem("expenses", JSON.stringify(expenses));
+    }
+    function updateTotal() {
+      let expenses = getExpenses();
+      let filterCategory = document.getElementById("filterCategory").value;
+      let filterDate = document.getElementById("filterDate").value;
+      let total = 0;
+      expenses.forEach(exp => {
+        if ((filterCategory && exp.category !== filterCategory) || 
+            (filterDate && exp.date !== filterDate)) return;
+        total += Number(exp.amount);
+      });
+      totalSpan.innerText = total;
+    }
+
+    // --- Render Expenses ---
+    function renderExpenses() {
+      let expenses = getExpenses();
+      let filterCategory = document.getElementById("filterCategory").value;
+      let filterDate = document.getElementById("filterDate").value;
+      list.innerHTML = "";
+      expenses.forEach((exp, index) => {
+        if ((filterCategory && exp.category !== filterCategory) || 
+            (filterDate && exp.date !== filterDate)) return;
+        let li = document.createElement("li");
+        li.innerHTML = `
+          ₹<span class="amount">${exp.amount}</span> | 
+          <span class="category">${exp.category}</span> | 
+          <span class="date">${exp.date}</span> | 
+          <span class="notes">${exp.notes || ""}</span>
+          <button data-index="${index}" class="editBtn">Edit</button>
+          <button data-index="${index}" class="deleteBtn">Delete</button>
+        `;
+        list.appendChild(li);
+      });
+      updateTotal();
+    }
+
+    // --- Add Expense (Submit or Enter key) ---
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      let amount = document.getElementById("amount").value;
+      let category = document.getElementById("category").value;
+      let date = document.getElementById("date").value;
+      let notes = document.getElementById("notes").value;
+
+      if (!amount || amount <= 0 || !category || !date) {
+        document.getElementById("errors").innerText = "Enter valid amount, category, and date!";
+        return;
+      }
+      document.getElementById("errors").innerText = "";
+
+      let expenses = getExpenses();
+      expenses.push({ amount, category, date, notes });
+      saveExpenses(expenses);
+
+      form.reset();
+      renderExpenses();
+    });
+
+    // Submit quickly with Enter key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        form.dispatchEvent(new Event("submit"));
+      }
+    });
+
+    // --- Event Delegation for Edit/Delete ---
+    list.addEventListener("click", (e) => {
+      let index = e.target.dataset.index;
+      let expenses = getExpenses();
+
+      if (e.target.classList.contains("deleteBtn")) {
+        expenses.splice(index, 1);
+        saveExpenses(expenses);
+        renderExpenses();
+      }
+      else if (e.target.classList.contains("editBtn")) {
+        let li = e.target.parentElement;
+        let amountSpan = li.querySelector(".amount");
+        let categorySpan = li.querySelector(".category");
+        let dateSpan = li.querySelector(".date");
+        let notesSpan = li.querySelector(".notes");
+
+        if (e.target.innerText === "Edit") {
+          // Make editable
+          amountSpan.innerHTML = `<input type="number" value="${expenses[index].amount}">`;
+          categorySpan.innerHTML = `<select>
+            <option ${expenses[index].category==="Food"?"selected":""}>Food</option>
+            <option ${expenses[index].category==="Travel"?"selected":""}>Travel</option>
+            <option ${expenses[index].category==="Shopping"?"selected":""}>Shopping</option>
+            <option ${expenses[index].category==="Other"?"selected":""}>Other</option>
+          </select>`;
+          dateSpan.innerHTML = `<input type="date" value="${expenses[index].date}">`;
+          notesSpan.innerHTML = `<input type="text" value="${expenses[index].notes}">`;
+          e.target.innerText = "Save";
+        } else {
+          // Save edited values
+          expenses[index].amount = li.querySelector(".amount input").value;
+          expenses[index].category = li.querySelector(".category select").value;
+          expenses[index].date = li.querySelector(".date input").value;
+          expenses[index].notes = li.querySelector(".notes input").value;
+          saveExpenses(expenses);
+          renderExpenses();
+        }
+      }
+    });
+
+    // --- Filters with sessionStorage ---
+    document.getElementById("filterCategory").addEventListener("change", () => {
+      sessionStorage.setItem("filterCategory", document.getElementById("filterCategory").value);
+      renderExpenses();
+    });
+    document.getElementById("filterDate").addEventListener("change", () => {
+      sessionStorage.setItem("filterDate", document.getElementById("filterDate").value);
+      renderExpenses();
+    });
+
+    // --- Load filters from session ---
+    window.onload = () => {
+      document.getElementById("filterCategory").value = sessionStorage.getItem("filterCategory") || "";
+      document.getElementById("filterDate").value = sessionStorage.getItem("filterDate") || "";
+      renderExpenses();
+    };
+  </script>
+</body>
+</html>

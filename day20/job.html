@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Online Job Application Form</title>
+</head>
+<body>
+  <h2>Online Job Application Form</h2>
+  <p id="progress">Step 1 of 3</p>
+
+  <form id="jobForm">
+
+    <!-- Step 1: Personal Info -->
+    <div class="step" id="step1">
+      <label>Name: <input type="text" id="name"></label><br><br>
+      <label>Email: <input type="text" id="email"></label><br><br>
+      <label>Phone: <input type="text" id="phone"></label><br><br>
+      <button type="button" id="next1">Next</button>
+    </div>
+
+    <!-- Step 2: Job Details -->
+    <div class="step" id="step2" style="display:none;">
+      <label>Position: 
+        <select id="position">
+          <option value="">Select Position</option>
+          <option>Developer</option>
+          <option>Designer</option>
+          <option>Tester</option>
+        </select>
+      </label><br><br>
+      <label>Expected Salary: <input type="number" id="salary"></label><br><br>
+      <label>Upload Resume: <input type="file" id="resume" accept="application/pdf"></label>
+      <p id="filePreview"></p>
+      <br>
+      <button type="button" id="prev1">Back</button>
+      <button type="button" id="next2">Next</button>
+    </div>
+
+    <!-- Step 3: Preferences -->
+    <div class="step" id="step3" style="display:none;">
+      <label><input type="radio" name="workMode" value="Remote"> Remote</label><br>
+      <label><input type="radio" name="workMode" value="Office"> Office</label><br><br>
+      <label><input type="checkbox" id="terms"> I agree to Terms & Conditions</label><br><br>
+      <button type="button" id="prev2">Back</button>
+      <button type="submit">Submit</button>
+    </div>
+  </form>
+
+  <p id="errors" style="color:red;"></p>
+
+  <script>
+    let step = 1;
+
+    function showStep(n) {
+      document.getElementById("step1").style.display = "none";
+      document.getElementById("step2").style.display = "none";
+      document.getElementById("step3").style.display = "none";
+      document.getElementById("step" + n).style.display = "block";
+      document.getElementById("progress").innerText = "Step " + n + " of 3";
+      document.getElementById("errors").innerText = "";
+    }
+
+    // Focus & Blur events
+    document.querySelectorAll("input, select").forEach(el => {
+      el.addEventListener("focus", () => el.style.backgroundColor = "#ffffcc");
+      el.addEventListener("blur", () => {
+        el.style.backgroundColor = "";
+        validateField(el);
+      });
+    });
+
+    // File change preview
+    document.getElementById("resume").addEventListener("change", (e) => {
+      let file = e.target.files[0];
+      if (file) {
+        document.getElementById("filePreview").innerText = "Selected File: " + file.name;
+      }
+    });
+
+    // Step navigation
+    document.getElementById("next1").onclick = () => {
+      let email = document.getElementById("email").value;
+      let phone = document.getElementById("phone").value;
+      if (!email.includes("@")) {
+        document.getElementById("errors").innerText = "Invalid email!";
+        return;
+      }
+      if (phone.length !== 10 || isNaN(phone)) {
+        document.getElementById("errors").innerText = "Phone must be 10 digits!";
+        return;
+      }
+      step = 2;
+      showStep(step);
+    };
+
+    document.getElementById("prev1").onclick = () => { step = 1; showStep(step); };
+
+    document.getElementById("next2").onclick = () => {
+      let file = document.getElementById("resume").files[0];
+      if (!file || file.type !== "application/pdf") {
+        document.getElementById("errors").innerText = "Upload PDF resume only!";
+        return;
+      }
+      step = 3;
+      showStep(step);
+    };
+
+    document.getElementById("prev2").onclick = () => { step = 2; showStep(step); };
+
+    // Submit
+    document.getElementById("jobForm").onsubmit = (e) => {
+      e.preventDefault();
+      if (!document.getElementById("terms").checked) {
+        document.getElementById("errors").innerText = "Please accept Terms!";
+        return;
+      }
+
+      let formData = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        position: document.getElementById("position").value,
+        salary: document.getElementById("salary").value,
+        workMode: document.querySelector("input[name='workMode']:checked")?.value
+      };
+
+      localStorage.setItem("jobApp", JSON.stringify(formData));
+      alert("Application Submitted!");
+    };
+
+    // Validation helper
+    function validateField(el) {
+      if (el.id === "email" && el.value && !el.value.includes("@")) {
+        document.getElementById("errors").innerText = "Invalid email format!";
+      }
+      if (el.id === "phone" && el.value && (el.value.length !== 10 || isNaN(el.value))) {
+        document.getElementById("errors").innerText = "Phone must be 10 digits!";
+      }
+    }
+
+    // Load saved data if exists
+    window.onload = () => {
+      let saved = JSON.parse(localStorage.getItem("jobApp"));
+      if (saved) {
+        document.getElementById("name").value = saved.name || "";
+        document.getElementById("email").value = saved.email || "";
+        document.getElementById("phone").value = saved.phone || "";
+        document.getElementById("position").value = saved.position || "";
+        document.getElementById("salary").value = saved.salary || "";
+        if (saved.workMode) {
+          document.querySelector("input[name='workMode'][value='" + saved.workMode + "']").checked = true;
+        }
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Event Registration & Ticket Booking</title>
+</head>
+<body>
+  <h2>Event Registration Form</h2>
+
+  <form id="bookingForm">
+    <label>Name: <input type="text" id="name"></label><br><br>
+    <label>Email: <input type="text" id="email"></label><br><br>
+    <label>Phone: <input type="text" id="phone"></label><br><br>
+    <label>Event Date: <input type="date" id="eventDate"></label><br><br>
+
+    <p>Ticket Type:</p>
+    <label><input type="radio" name="ticketType" value="Regular"> Regular (₹500)</label><br>
+    <label><input type="radio" name="ticketType" value="VIP"> VIP (₹1000)</label><br>
+    <label><input type="radio" name="ticketType" value="Student"> Student (₹300)</label><br><br>
+
+    <p>Number of Tickets:</p>
+    <button type="button" id="minus">-</button>
+    <input type="text" id="ticketCount" value="1" style="width:40px; text-align:center;">
+    <button type="button" id="plus">+</button><br><br>
+
+    <p><b>Total Price: ₹<span id="total">0</span></b></p>
+
+    <button type="submit">Confirm Booking</button>
+  </form>
+
+  <p id="errors" style="color:red;"></p>
+
+  <h3>Booking History</h3>
+  <ul id="history"></ul>
+
+  <script>
+    const prices = { Regular: 500, VIP: 1000, Student: 300 };
+    let ticketCount = 1;
+
+    const countInput = document.getElementById("ticketCount");
+    const totalSpan = document.getElementById("total");
+    const form = document.getElementById("bookingForm");
+
+    // Update total price
+    function updateTotal() {
+      let type = document.querySelector("input[name='ticketType']:checked")?.value;
+      let total = 0;
+      if (type) {
+        total = prices[type] * ticketCount;
+      }
+      totalSpan.innerText = total;
+    }
+
+    // Increase/Decrease ticket count
+    document.getElementById("plus").addEventListener("click", () => {
+      ticketCount++;
+      countInput.value = ticketCount;
+      updateTotal();
+      saveProgress();
+    });
+    document.getElementById("minus").addEventListener("click", () => {
+      if (ticketCount > 1) {
+        ticketCount--;
+        countInput.value = ticketCount;
+        updateTotal();
+        saveProgress();
+      }
+    });
+
+    // Change ticket type
+    document.querySelectorAll("input[name='ticketType']").forEach(radio => {
+      radio.addEventListener("change", () => {
+        updateTotal();
+        saveProgress();
+      });
+    });
+
+    // Focus/Blur validation
+    document.querySelectorAll("input").forEach(input => {
+      input.addEventListener("focus", () => input.style.backgroundColor = "#ffffcc");
+      input.addEventListener("blur", () => {
+        input.style.backgroundColor = "";
+        validateField(input);
+        saveProgress();
+      });
+    });
+
+    // Validation function
+    function validateField(input) {
+      if (input.id === "email" && input.value && !input.value.includes("@")) {
+        document.getElementById("errors").innerText = "Invalid email!";
+      } else if (input.id === "phone" && input.value && (input.value.length !== 10 || isNaN(input.value))) {
+        document.getElementById("errors").innerText = "Phone must be 10 digits!";
+      } else {
+        document.getElementById("errors").innerText = "";
+      }
+    }
+
+    // Submit booking
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      let name = document.getElementById("name").value;
+      let email = document.getElementById("email").value;
+      let phone = document.getElementById("phone").value;
+      let eventDate = document.getElementById("eventDate").value;
+      let type = document.querySelector("input[name='ticketType']:checked")?.value;
+      let total = document.getElementById("total").innerText;
+
+      if (!name || !email.includes("@") || phone.length !== 10 || !eventDate || !type) {
+        document.getElementById("errors").innerText = "Please fill all fields correctly!";
+        return;
+      }
+
+      let booking = { name, email, phone, eventDate, type, ticketCount, total };
+
+      // Save in localStorage
+      let history = JSON.parse(localStorage.getItem("bookings")) || [];
+      history.push(booking);
+      localStorage.setItem("bookings", JSON.stringify(history));
+
+      // Clear form & session
+      form.reset();
+      ticketCount = 1; countInput.value = 1;
+      totalSpan.innerText = 0;
+      sessionStorage.removeItem("progress");
+
+      loadHistory();
+      alert("Booking Confirmed!");
+    });
+
+    // Save progress in sessionStorage
+    function saveProgress() {
+      let progress = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        eventDate: document.getElementById("eventDate").value,
+        ticketType: document.querySelector("input[name='ticketType']:checked")?.value,
+        ticketCount
+      };
+      sessionStorage.setItem("progress", JSON.stringify(progress));
+    }
+
+    // Load progress if available
+    window.onload = () => {
+      let progress = JSON.parse(sessionStorage.getItem("progress"));
+      if (progress) {
+        document.getElementById("name").value = progress.name;
+        document.getElementById("email").value = progress.email;
+        document.getElementById("phone").value = progress.phone;
+        document.getElementById("eventDate").value = progress.eventDate;
+        if (progress.ticketType) {
+          document.querySelector("input[name='ticketType'][value='"+progress.ticketType+"']").checked = true;
+        }
+        ticketCount = progress.ticketCount || 1;
+        countInput.value = ticketCount;
+        updateTotal();
+      }
+      loadHistory();
+    };
+
+    // Load booking history
+    function loadHistory() {
+      let history = JSON.parse(localStorage.getItem("bookings")) || [];
+      let list = document.getElementById("history");
+      list.innerHTML = "";
+      history.forEach((b, index) => {
+        let li = document.createElement("li");
+        li.innerHTML = `
+          ${b.name} - ${b.type} x ${b.ticketCount} = ₹${b.total} on ${b.eventDate}
+          <button data-index="${index}" class="editBtn">Edit</button>
+          <button data-index="${index}" class="deleteBtn">Delete</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    // Event delegation for edit/delete
+    document.getElementById("history").addEventListener("click", (e) => {
+      let idx = e.target.dataset.index;
+      let history = JSON.parse(localStorage.getItem("bookings")) || [];
+      if (e.target.classList.contains("deleteBtn")) {
+        history.splice(idx, 1);
+        localStorage.setItem("bookings", JSON.stringify(history));
+        loadHistory();
+      } else if (e.target.classList.contains("editBtn")) {
+        let booking = history[idx];
+        document.getElementById("name").value = booking.name;
+        document.getElementById("email").value = booking.email;
+        document.getElementById("phone").value = booking.phone;
+        document.getElementById("eventDate").value = booking.eventDate;
+        document.querySelector("input[name='ticketType'][value='"+booking.type+"']").checked = true;
+        ticketCount = booking.ticketCount;
+        countInput.value = ticketCount;
+        updateTotal();
+        // Remove old record so editing means resubmitting
+        history.splice(idx, 1);
+        localStorage.setItem("bookings", JSON.stringify(history));
+        loadHistory();
+      }
+    });
+  </script>
+</body>
+</html>
