@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Weather Forecast Dashboard</title>
+</head>
+<body>
+  <h2>Weather Forecast Dashboard</h2>
+
+  <input type="text" id="cityInput" placeholder="Enter city name">
+  <button id="searchBtn">Search</button>
+  <p id="error" style="color:red;"></p>
+
+  <h3>Weather Info</h3>
+  <div id="weatherInfo"></div>
+
+  <h3>Multiple Cities (Parallel Fetch)</h3>
+  <button id="loadMultiple">Load Weather for Delhi, Mumbai, Chennai</button>
+  <div id="multiWeather"></div>
+
+  <script>
+    const apiKey = "fd83603ba4af06ec78bc3028d2430589";
+
+    // Function to fetch weather, returns a Promise
+    function fetchWeather(city) {
+      return fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("City not found!");
+          }
+          return response.json();
+        });
+    }
+
+    // Async/Await: Fetch one city
+    async function getWeather(city) {
+      try {
+        let data = await fetchWeather(city);
+        document.getElementById("weatherInfo").innerHTML = `
+          <p><b>${data.name}</b></p>
+          <p>🌡 Temp: ${data.main.temp} °C</p>
+          <p>💧 Humidity: ${data.main.humidity}%</p>
+          <p>☁ Condition: ${data.weather[0].description}</p>
+        `;
+        document.getElementById("error").innerText = "";
+
+        // Save last searched city
+        localStorage.setItem("lastCity", city);
+
+      } catch (err) {
+        document.getElementById("error").innerText = err.message;
+        document.getElementById("weatherInfo").innerHTML = "";
+      }
+    }
+
+    // Fetch multiple cities in parallel
+    async function getMultipleCitiesWeather(cities) {
+      try {
+        let results = await Promise.all(cities.map(city => fetchWeather(city)));
+        let container = document.getElementById("multiWeather");
+        container.innerHTML = "";
+        results.forEach(data => {
+          let div = document.createElement("div");
+          div.style.border = "1px solid black";
+          div.style.margin = "5px";
+          div.style.padding = "5px";
+          div.innerHTML = `
+            <p><b>${data.name}</b></p>
+            <p>🌡 Temp: ${data.main.temp} °C</p>
+            <p>💧 Humidity: ${data.main.humidity}%</p>
+            <p>☁ Condition: ${data.weather[0].description}</p>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        document.getElementById("multiWeather").innerText = "Error fetching multiple cities!";
+      }
+    }
+
+    // Events
+    document.getElementById("searchBtn").addEventListener("click", () => {
+      let city = document.getElementById("cityInput").value.trim();
+      if (city) getWeather(city);
+    });
+
+    document.getElementById("loadMultiple").addEventListener("click", () => {
+      getMultipleCitiesWeather(["Delhi", "Mumbai", "Chennai"]);
+    });
+
+    // Load last searched city on refresh
+    window.onload = () => {
+      let lastCity = localStorage.getItem("lastCity");
+      if (lastCity) {
+        getWeather(lastCity);
+      }
+    };
+  </script>
+</body>
+</html>

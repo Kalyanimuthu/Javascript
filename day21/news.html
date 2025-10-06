@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>News Aggregator</title>
+</head>
+<body>
+
+  <h1>🗞️ News Aggregator</h1>
+
+  <label for="category">Choose category:</label>
+  <select id="category" onchange="fetchCategoryNews()">
+    <option value="general">General</option>
+    <option value="technology">Technology</option>
+    <option value="sports">Sports</option>
+    <option value="business">Business</option>
+    <option value="health">Health</option>
+    <option value="science">Science</option>
+    <option value="entertainment">Entertainment</option>
+  </select>
+
+  <br><br>
+  <input type="text" id="search" placeholder="Search news..." onkeyup="searchNews(event)">
+  <br><br>
+
+  <div id="spinner" style="display:none;">Loading...</div>
+  <div id="news"></div>
+
+  <script>
+    const apiKey = "a5ead12e0fce4e14a982c02b42a7fdfc"; // Replace with your NewsAPI key
+    const newsContainer = document.getElementById("news");
+    const spinner = document.getElementById("spinner");
+    const categorySelect = document.getElementById("category");
+
+    // Load last selected category
+    const savedCategory = sessionStorage.getItem("category");
+    if (savedCategory) {
+      categorySelect.value = savedCategory;
+      fetchCategoryNews();
+    } else {
+      fetchTopHeadlines();
+    }
+
+    // Fetch top headlines using Promises
+    function fetchTopHeadlines() {
+      spinner.style.display = "block";
+      fetch(`https://newsapi.org/v2/top-headlines?country=in&apiKey=${apiKey}`)
+        .then(res => {
+          if (!res.ok) throw new Error("API error");
+          return res.json();
+        })
+        .then(data => {
+          spinner.style.display = "none";
+          displayNews(data.articles);
+        })
+        .catch(err => {
+          spinner.style.display = "none";
+          newsContainer.innerHTML = `<p>Error: ${err.message}</p>`;
+        });
+    }
+
+    // Fetch category news using async/await
+    async function fetchCategoryNews() {
+      const category = categorySelect.value;
+      sessionStorage.setItem("category", category);
+      spinner.style.display = "block";
+      newsContainer.innerHTML = "";
+
+      try {
+        const res = await fetch(`https://newsapi.org/v2/top-headlines?country=in&category=${category}&apiKey=${apiKey}`);
+        if (!res.ok) throw new Error("Invalid API key or quota exceeded");
+        const data = await res.json();
+        spinner.style.display = "none";
+        displayNews(data.articles);
+      } catch (err) {
+        spinner.style.display = "none";
+        newsContainer.innerHTML = `<p>Error: ${err.message}</p>`;
+      }
+    }
+
+    // Search news by keyword
+    async function searchNews(event) {
+      if (event.key === "Enter") {
+        const query = document.getElementById("search").value;
+        spinner.style.display = "block";
+        newsContainer.innerHTML = "";
+
+        try {
+          const res = await fetch(`https://newsapi.org/v2/everything?q=${query}&apiKey=${apiKey}`);
+          if (!res.ok) throw new Error("Search failed");
+          const data = await res.json();
+          spinner.style.display = "none";
+          displayNews(data.articles);
+        } catch (err) {
+          spinner.style.display = "none";
+          newsContainer.innerHTML = `<p>Error: ${err.message}</p>`;
+        }
+      }
+    }
+
+    // Display news cards
+    function displayNews(articles) {
+      if (!articles.length) {
+        newsContainer.innerHTML = "<p>No news found.</p>";
+        return;
+      }
+
+      newsContainer.innerHTML = articles.map(article => `
+        <div style="border:1px solid #ccc; margin:10px; padding:10px;">
+          <h3>${article.title}</h3>
+          ${article.urlToImage ? `<img src="${article.urlToImage}" width="300">` : ""}
+          <p>${article.description || "No description available."}</p>
+          <a href="${article.url}" target="_blank">Read more</a>
+        </div>
+      `).join("");
+    }
+  </script>
+
+</body>
+</html>

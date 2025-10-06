@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GitHub Profile Explorer</title>
+</head>
+<body>
+
+  <h1>GitHub Profile Explorer</h1>
+
+  <div>
+    <input type="text" id="username" placeholder="Enter GitHub username">
+    <button onclick="exploreGitHubProfile()">Search</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    function getUser(username) {
+      return fetch(`https://api.github.com/users/${username}`)
+        .then(res => {
+          if (!res.ok) throw new Error("User not found");
+          return res.json();
+        });
+    }
+
+    async function getReposAndFollowers(username) {
+      const [reposRes, followersRes] = await Promise.all([
+        fetch(`https://api.github.com/users/${username}/repos`),
+        fetch(`https://api.github.com/users/${username}/followers`)
+      ]);
+
+      if (!reposRes.ok || !followersRes.ok) {
+        throw new Error("Failed to fetch data");
+      }
+
+      const repos = await reposRes.json();
+      const followers = await followersRes.json();
+      return { repos, followers };
+    }
+
+    async function exploreGitHubProfile() {
+      const username = document.getElementById("username").value;
+      const output = document.getElementById("output");
+      output.innerHTML = "";
+
+      try {
+        const user = await getUser(username);
+        const { repos, followers } = await getReposAndFollowers(username);
+
+        let html = `
+          <h2>${user.name || user.login}</h2>
+          <img src="${user.avatar_url}" width="100">
+          <p>${user.bio || "No bio available"}</p>
+          <p>Public Repos: ${user.public_repos} | Followers: ${user.followers}</p>
+          <h3>Repositories</h3>
+          <ul>
+            ${repos.map(repo => `<li><a href="${repo.html_url}" target="_blank">${repo.name}</a></li>`).join("")}
+          </ul>
+          <h3>Followers</h3>
+          <ul>
+            ${followers.map(f => `<li><a href="${f.html_url}" target="_blank">${f.login}</a></li>`).join("")}
+          </ul>
+        `;
+
+        output.innerHTML = html;
+      } catch (err) {
+        output.innerHTML = `<p>${err.message}</p>`;
+      }
+    }
+  </script>
+
+</body>
+</html>

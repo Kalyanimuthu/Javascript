@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Movie Explorer</title>
+</head>
+<body>
+  <h2>Movie Explorer</h2>
+
+  <input type="text" id="searchInput" placeholder="Enter movie title">
+  <button id="searchBtn">Search</button>
+  <p id="error" style="color:red;"></p>
+  <div id="movies"></div>
+  <button id="loadMore" style="display:none;">Load More</button>
+
+  <h3>Movie Details</h3>
+  <div id="movieDetails"></div>
+
+  <h3>Favorites</h3>
+  <div id="favorites"></div>
+
+  <script>
+    const apiKey = "95d615e4";
+    let currentPage = 1;
+    let currentQuery = "";
+
+    // --- Fetch movie search results ---
+    async function searchMovies(query, page = 1) {
+      document.getElementById("error").innerText = "";
+      document.getElementById("movies").innerHTML = "Loading...";
+      try {
+        let response = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&s=${query}&page=${page}`);
+        let data = await response.json();
+        if (data.Response === "False") throw new Error(data.Error);
+        displayMovies(data.Search, page > 1);
+      } catch (err) {
+        document.getElementById("error").innerText = err.message;
+        document.getElementById("movies").innerHTML = "";
+        document.getElementById("loadMore").style.display = "none";
+      }
+    }
+
+    // --- Display movie search results ---
+    function displayMovies(movies, append = false) {
+      const container = document.getElementById("movies");
+      if (!append) container.innerHTML = "";
+      movies.forEach(movie => {
+        let div = document.createElement("div");
+        div.style.border = "1px solid black";
+        div.style.margin = "5px";
+        div.style.padding = "5px";
+        div.style.display = "inline-block";
+        div.style.width = "150px";
+        div.style.textAlign = "center";
+        div.innerHTML = `
+          <img src="${movie.Poster !== "N/A" ? movie.Poster : ""}" width="100"><br>
+          <b>${movie.Title}</b><br>
+          <small>${movie.Year}</small><br>
+          <button onclick="showDetails('${movie.imdbID}')">Details</button>
+          <button onclick="addFavorite('${movie.imdbID}')">❤️</button>
+        `;
+        container.appendChild(div);
+      });
+      document.getElementById("loadMore").style.display = "block";
+    }
+
+    // --- Fetch movie details (Promise) ---
+    function fetchMovieDetails(id) {
+      return new Promise((resolve, reject) => {
+        fetch(`https://www.omdbapi.com/?apikey=${apiKey}&i=${id}&plot=full`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.Response === "False") reject(data.Error);
+            else resolve(data);
+          })
+          .catch(err => reject(err));
+      });
+    }
+
+    // --- Show movie details ---
+    async function showDetails(id) {
+      const detailsDiv = document.getElementById("movieDetails");
+      detailsDiv.innerHTML = "Loading...";
+      try {
+        let data = await fetchMovieDetails(id);
+        detailsDiv.innerHTML = `
+          <h4>${data.Title} (${data.Year})</h4>
+          <img src="${data.Poster !== "N/A" ? data.Poster : ""}" width="150"><br>
+          <p><b>Genre:</b> ${data.Genre}</p>
+          <p><b>Director:</b> ${data.Director}</p>
+          <p><b>Actors:</b> ${data.Actors}</p>
+          <p><b>Plot:</b> ${data.Plot}</p>
+          <p><b>IMDB Rating:</b> ${data.imdbRating}</p>
+        `;
+      } catch (err) {
+        detailsDiv.innerHTML = "Error loading details: " + err;
+      }
+    }
+
+    // --- Favorites Feature ---
+    function addFavorite(id) {
+      let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+      if (!favorites.includes(id)) favorites.push(id);
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      loadFavorites();
+    }
+
+    async function loadFavorites() {
+      const container = document.getElementById("favorites");
+      container.innerHTML = "";
+      let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+      for (let id of favorites) {
+        try {
+          let data = await fetchMovieDetails(id);
+          let div = document.createElement("div");
+          div.innerHTML = `${data.Title} (${data.Year}) <button onclick="removeFavorite('${id}')">❌</button>`;
+          container.appendChild(div);
+        } catch {}
+      }
+    }
+
+    function removeFavorite(id) {
+      let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+      favorites = favorites.filter(f => f !== id);
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      loadFavorites();
+    }
+
+    // --- Event Listeners ---
+    document.getElementById("searchBtn").addEventListener("click", () => {
+      currentQuery = document.getElementById("searchInput").value.trim();
+      currentPage = 1;
+      if (currentQuery) searchMovies(currentQuery, currentPage);
+    });
+
+    document.getElementById("loadMore").addEventListener("click", () => {
+      currentPage++;
+      searchMovies(currentQuery, currentPage);
+    });
+
+    // Load favorites on page load
+    window.onload = loadFavorites;
+  </script>
+</body>
+</html>

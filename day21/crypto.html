@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Crypto Price Tracker</title>
+</head>
+<body>
+
+  <h1>💰 Cryptocurrency Price Tracker</h1>
+
+  <label>Select coins to track:</label><br>
+  <input type="checkbox" value="bitcoin" onchange="toggleCoin(this)"> Bitcoin
+  <input type="checkbox" value="ethereum" onchange="toggleCoin(this)"> Ethereum
+  <input type="checkbox" value="dogecoin" onchange="toggleCoin(this)"> Dogecoin
+  <input type="checkbox" value="solana" onchange="toggleCoin(this)"> Solana
+  <input type="checkbox" value="cardano" onchange="toggleCoin(this)"> Cardano
+  <input type="checkbox" value="litecoin" onchange="toggleCoin(this)"> Litecoin
+  <br><br>
+
+  <button onclick="refreshPrices()">Refresh Prices</button>
+  <p id="error" style="color:red;"></p>
+  <table border="1" id="priceTable">
+    <thead>
+      <tr>
+        <th>Coin</th>
+        <th>Price (USD)</th>
+        <th>Change (24h)</th>
+        <th>Last Updated</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const tableBody = document.querySelector("#priceTable tbody");
+    const errorMsg = document.getElementById("error");
+    let trackedCoins = JSON.parse(localStorage.getItem("trackedCoins")) || ["bitcoin", "ethereum", "dogecoin"];
+    let page = 1;
+
+    // Initialize checkboxes
+    document.querySelectorAll("input[type=checkbox]").forEach(cb => {
+      cb.checked = trackedCoins.includes(cb.value);
+    });
+
+    function toggleCoin(checkbox) {
+      if (checkbox.checked) {
+        trackedCoins.push(checkbox.value);
+      } else {
+        trackedCoins = trackedCoins.filter(c => c !== checkbox.value);
+      }
+      localStorage.setItem("trackedCoins", JSON.stringify(trackedCoins));
+      refreshPrices();
+    }
+
+    // Manual refresh using async/await
+    async function refreshPrices() {
+      errorMsg.textContent = "";
+      tableBody.innerHTML = "";
+
+      try {
+        const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${trackedCoins.join(",")}`);
+        if (!res.ok) throw new Error("Network error");
+        const data = await res.json();
+        renderTable(data);
+      } catch (err) {
+        errorMsg.textContent = err.message;
+      }
+    }
+
+    // Auto-refresh every 30 seconds using Promises
+    function autoRefresh() {
+      fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${trackedCoins.join(",")}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Network error");
+          return res.json();
+        })
+        .then(data => {
+          renderTable(data);
+        })
+        .catch(err => {
+          errorMsg.textContent = err.message;
+        });
+    }
+
+    function renderTable(data) {
+      tableBody.innerHTML = data.map(coin => `
+        <tr>
+          <td>${coin.name}</td>
+          <td>$${coin.current_price.toFixed(2)}</td>
+          <td style="color:${coin.price_change_percentage_24h >= 0 ? 'green' : 'red'};">
+            ${coin.price_change_percentage_24h.toFixed(2)}%
+          </td>
+          <td>${new Date(coin.last_updated).toLocaleTimeString()}</td>
+        </tr>
+      `).join("");
+    }
+
+    // Infinite scroll: load more coins
+    window.addEventListener("scroll", () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight) {
+        loadMoreCoins();
+      }
+    });
+
+    function loadMoreCoins() {
+      fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=${++page}`)
+        .then(res => res.json())
+        .then(data => {
+          data.forEach(coin => {
+            if (!trackedCoins.includes(coin.id)) {
+              trackedCoins.push(coin.id);
+              localStorage.setItem("trackedCoins", JSON.stringify(trackedCoins));
+              refreshPrices();
+            }
+          });
+        });
+    }
+
+    // Initial load
+    refreshPrices();
+    setInterval(autoRefresh, 30000);
+  </script>
+
+</body>
+</html>
